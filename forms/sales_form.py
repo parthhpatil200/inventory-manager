@@ -3,8 +3,9 @@ import os
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QLineEdit, QComboBox, QPushButton, QMessageBox,
                              QDoubleSpinBox, QTableWidget, QTableWidgetItem,
-                             QSpinBox)
+                             QSpinBox, QScrollArea, QGroupBox)
 from PySide6.QtCore import Qt
+from styles import FORM_STYLE
 
 class SalesForm(QWidget):
     def __init__(self, product_master_form=None, current_user=None):
@@ -14,6 +15,8 @@ class SalesForm(QWidget):
         self.setup_ui()
         self.load_products()
         self.load_customers()
+        self.load_sales_list()
+        self.setStyleSheet(FORM_STYLE)
         
         if product_master_form:
             product_master_form.product_added.connect(self.load_products)
@@ -23,16 +26,61 @@ class SalesForm(QWidget):
         return sqlite3.connect(db_path)
 
     def setup_ui(self):
+        # Create main scroll area
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: transparent;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: #f0f0f0;
+                width: 10px;
+                margin: 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: #c0c0c0;
+                min-height: 20px;
+                border-radius: 5px;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+        """)
+
+        # Create main widget and layout
+        main_widget = QWidget()
         layout = QVBoxLayout()
+        layout.setSpacing(20)
         
         # Form fields
+        form_group = QGroupBox("Sales Details")
         form_layout = QVBoxLayout()
+        form_layout.setSpacing(15)
         
         # Customer
         customer_layout = QHBoxLayout()
         customer_label = QLabel("Customer:")
         self.customer_combo = QComboBox()
         self.customer_combo.setEditable(True)
+        self.customer_combo.setPlaceholderText("Select or enter customer")
+        self.customer_combo.setMinimumHeight(30)
+        self.customer_combo.setStyleSheet("""
+            QComboBox {
+                padding-right: 20px;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+            QComboBox::down-arrow {
+                image: url(resources/down_arrow.png);
+                width: 12px;
+                height: 12px;
+            }
+        """)
         customer_layout.addWidget(customer_label)
         customer_layout.addWidget(self.customer_combo)
         
@@ -40,6 +88,22 @@ class SalesForm(QWidget):
         product_layout = QHBoxLayout()
         product_label = QLabel("Product:")
         self.product_combo = QComboBox()
+        self.product_combo.setPlaceholderText("Select product")
+        self.product_combo.setMinimumHeight(30)
+        self.product_combo.setStyleSheet("""
+            QComboBox {
+                padding-right: 20px;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+            QComboBox::down-arrow {
+                image: url(resources/down_arrow.png);
+                width: 12px;
+                height: 12px;
+            }
+        """)
         product_layout.addWidget(product_label)
         product_layout.addWidget(self.product_combo)
         
@@ -48,6 +112,7 @@ class SalesForm(QWidget):
         quantity_label = QLabel("Quantity:")
         self.quantity_input = QSpinBox()
         self.quantity_input.setRange(1, 999999)
+        self.quantity_input.setMinimumHeight(30)
         quantity_layout.addWidget(quantity_label)
         quantity_layout.addWidget(self.quantity_input)
         
@@ -57,6 +122,7 @@ class SalesForm(QWidget):
         self.rate_input = QDoubleSpinBox()
         self.rate_input.setRange(0, 999999.99)
         self.rate_input.setDecimals(2)
+        self.rate_input.setMinimumHeight(30)
         rate_layout.addWidget(rate_label)
         rate_layout.addWidget(self.rate_input)
         
@@ -66,6 +132,7 @@ class SalesForm(QWidget):
         self.tax_input = QDoubleSpinBox()
         self.tax_input.setRange(0, 100)
         self.tax_input.setDecimals(2)
+        self.tax_input.setMinimumHeight(30)
         tax_layout.addWidget(tax_label)
         tax_layout.addWidget(self.tax_input)
         
@@ -73,6 +140,7 @@ class SalesForm(QWidget):
         total_rate_layout = QHBoxLayout()
         total_rate_label = QLabel("Total Rate:")
         self.total_rate_label = QLabel("0.00")
+        self.total_rate_label.setMinimumHeight(30)
         total_rate_layout.addWidget(total_rate_label)
         total_rate_layout.addWidget(self.total_rate_label)
         
@@ -80,6 +148,7 @@ class SalesForm(QWidget):
         tax_amount_layout = QHBoxLayout()
         tax_amount_label = QLabel("Tax Amount:")
         self.tax_amount_label = QLabel("0.00")
+        self.tax_amount_label.setMinimumHeight(30)
         tax_amount_layout.addWidget(tax_amount_label)
         tax_amount_layout.addWidget(self.tax_amount_label)
         
@@ -87,17 +156,9 @@ class SalesForm(QWidget):
         total_amount_layout = QHBoxLayout()
         total_amount_label = QLabel("Total Amount:")
         self.total_amount_label = QLabel("0.00")
+        self.total_amount_label.setMinimumHeight(30)
         total_amount_layout.addWidget(total_amount_label)
         total_amount_layout.addWidget(self.total_amount_label)
-        
-        # Buttons
-        button_layout = QHBoxLayout()
-        save_button = QPushButton("Save")
-        clear_button = QPushButton("Clear Form")
-        save_button.clicked.connect(self.save_sale)
-        clear_button.clicked.connect(self.clear_form)
-        button_layout.addWidget(save_button)
-        button_layout.addWidget(clear_button)
         
         # Add all layouts to form layout
         form_layout.addLayout(customer_layout)
@@ -108,9 +169,12 @@ class SalesForm(QWidget):
         form_layout.addLayout(total_rate_layout)
         form_layout.addLayout(tax_amount_layout)
         form_layout.addLayout(total_amount_layout)
-        form_layout.addLayout(button_layout)
+        
+        form_group.setLayout(form_layout)
         
         # Sales table
+        table_group = QGroupBox("Sales History")
+        table_layout = QVBoxLayout()
         self.sales_table = QTableWidget()
         self.sales_table.setColumnCount(8)
         self.sales_table.setHorizontalHeaderLabels([
@@ -120,18 +184,44 @@ class SalesForm(QWidget):
         self.sales_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.sales_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.sales_table.itemDoubleClicked.connect(self.load_sale)
+        self.sales_table.setStyleSheet("""
+            QTableWidget {
+                border: none;
+                background-color: white;
+            }
+        """)
+        table_layout.addWidget(self.sales_table)
+        table_group.setLayout(table_layout)
         
-        # Add layouts to main layout
-        layout.addLayout(form_layout)
-        layout.addWidget(self.sales_table)
+        # Action buttons
+        button_layout = QHBoxLayout()
+        self.save_button = QPushButton("Save Sale")
+        self.clear_button = QPushButton("Clear Form")
+        self.save_button.setMinimumHeight(40)
+        self.clear_button.setMinimumHeight(40)
+        button_layout.addWidget(self.save_button)
+        button_layout.addWidget(self.clear_button)
         
-        self.setLayout(layout)
+        # Add all layouts to main layout
+        layout.addWidget(form_group)
+        layout.addWidget(table_group)
+        layout.addLayout(button_layout)
+        
+        main_widget.setLayout(layout)
+        scroll.setWidget(main_widget)
+        
+        # Create outer layout for scroll area
+        outer_layout = QVBoxLayout()
+        outer_layout.addWidget(scroll)
+        self.setLayout(outer_layout)
         
         # Connect signals for automatic calculations
         self.quantity_input.valueChanged.connect(self.calculate_totals)
         self.rate_input.valueChanged.connect(self.calculate_totals)
         self.tax_input.valueChanged.connect(self.calculate_totals)
         self.product_combo.currentIndexChanged.connect(self.product_changed)
+        self.save_button.clicked.connect(self.save_sale)
+        self.clear_button.clicked.connect(self.clear_form)
 
     def load_products(self):
         if not self.current_user:
@@ -271,21 +361,31 @@ class SalesForm(QWidget):
         conn = self.get_db_connection()
         cursor = conn.cursor()
         
+        # Join with products table to get product names
         cursor.execute("""
-            SELECT customer, product_sku, quantity, rate, tax_rate,
-                   total_rate, tax_amount, total_amount
-            FROM sales
-            WHERE user_id = ?
-            ORDER BY id DESC
+            SELECT s.customer, p.product_name, s.quantity, s.rate, s.tax_rate,
+                   s.total_rate, s.tax_amount, s.total_amount
+            FROM sales s
+            LEFT JOIN products p ON s.product_sku = p.sku_id AND s.user_id = p.user_id
+            WHERE s.user_id = ?
+            ORDER BY s.id DESC
         """, (self.current_user['id'],))
         
-        sales_list = cursor.fetchall()
-        self.sales_table.setRowCount(len(sales_list))
+        sales = cursor.fetchall()
+        self.sales_table.setRowCount(len(sales))
         
-        for row, sale in enumerate(sales_list):
+        for row, sale in enumerate(sales):
             for col, value in enumerate(sale):
-                item = QTableWidgetItem(str(value))
+                # Format numeric values to 2 decimal places
+                if isinstance(value, (int, float)):
+                    display_value = f"{value:.2f}"
+                else:
+                    display_value = str(value) if value is not None else ""
+                item = QTableWidgetItem(display_value)
                 self.sales_table.setItem(row, col, item)
+        
+        # Resize columns to content
+        self.sales_table.resizeColumnsToContents()
         
         conn.close()
 
